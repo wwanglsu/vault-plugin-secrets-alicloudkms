@@ -409,6 +409,8 @@ func (b *backend) pathKeysWrite(ctx context.Context, req *logical.Request, d *fr
 		fmt.Println("Got error in creating AliCloud kms client: ", err)
 	}
 
+	client.GetConfig().Scheme="HTTPS"
+
 	createKeyReq := kms.CreateKeyRequest{
 		RpcRequest:              &requests.RpcRequest{},
 		ProtectionLevel:         "",

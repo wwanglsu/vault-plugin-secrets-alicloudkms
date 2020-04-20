@@ -117,8 +117,10 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 
 	client, err := kms.NewClientWithAccessKey("cn-hangzhou","LTAI4G5VKQ3n4QJ2vBFoR8rL","KS3exBiXnS8XFEtJvY47Juh0jIl2Yf")
 	if err != nil{
-		fmt.Println("Got error kms: ", err)
+		fmt.Println("Got error in creating AliCloud kms client: ", err)
 	}
+
+	client.GetConfig().Scheme="HTTPS"
 
 	encryptReq := kms.EncryptRequest{
 		RpcRequest:              &requests.RpcRequest{},

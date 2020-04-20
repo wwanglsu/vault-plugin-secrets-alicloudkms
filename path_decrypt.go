@@ -136,6 +136,8 @@ func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d 
 		fmt.Println("Got error in initialize AliCloud KMS Client: ", err)
 	}
 
+	client.GetConfig().Scheme="HTTPS"
+
 	decryReq:=kms.DecryptRequest{
 		RpcRequest:              &requests.RpcRequest{},
 		CiphertextBlob:          string(ciphertextBlob),
