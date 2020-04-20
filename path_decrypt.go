@@ -3,14 +3,11 @@ package alicloudkms
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"log"
-	"os"
+	"github.com/hashicorp/errwrap"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
 	// "github.com/hashicorp/errwrap"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -77,15 +74,10 @@ correct version automatically.
 // used to decrypt the ciphertext string using the named key.
 func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	fmt.Println("This is test on 4/16/2020-alicloudkms pathDecryptWrite()")
-	key := d.Get("key").(string)
+	// key := d.Get("key").(string)
+	ciphertext := d.Get("ciphertext").(string)
 	// aad := d.Get("additional_authenticated_data").(string)
 	// keyVersion := d.Get("key_version").(int)
-
-	data, err := json.Marshal(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("alicloudkms/decrypt/%s, Request body: %s\n", key, data)
 
 	/*k, err := b.Key(ctx, req.Storage, key)
 	if err != nil {
@@ -133,33 +125,29 @@ func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d 
 		return nil, errwrap.Wrapf("failed to get underlying crypto key: {{err}}", err)
 	}*/
 
-	var plaintext string
-	os.Setenv("AWS_ACCESS_KEY_ID","AKIAJYRQDOGKVOVBWUFA")
-	os.Setenv("AWS_SECRET_ACCESS_KEY","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")
-	// Initialize a session in us-west-2 that the SDK will use to load
-	// credentials from the shared credentials file ~/.aws/credentials.
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-2"),
-		CredentialsChainVerboseErrors:aws.Bool(true)},
-	)
-
-	// Create KMS service client
-	svc := kms.New(sess)
-	_, err = sess.Config.Credentials.Get()
-	ciphertext := d.Get("ciphertext").(string)
-	decodedCiphertext, err := base64.StdEncoding.DecodeString(ciphertext)
-
-	fmt.Println("alicloudkms decryption ciphertext: ", ciphertext)
-
-	// Decrypt the data
-	result2, err := svc.Decrypt(&kms.DecryptInput{CiphertextBlob: decodedCiphertext})
-
+	ciphertextBlob, err := base64.StdEncoding.DecodeString(ciphertext)
 	if err != nil {
-		fmt.Println("Got error from aws kms decrypting data: ", err)
+		return nil, errwrap.Wrapf("failed to base64 decode ciphtertext: {{err}}", err)
 	}
 
-	plaintext = string(result2.Plaintext)
-	fmt.Println("Decrypted test:", plaintext)
+	var plaintext string
+	client, err := kms.NewClientWithAccessKey("cn-hangzhou","LTAI4G5VKQ3n4QJ2vBFoR8rL","KS3exBiXnS8XFEtJvY47Juh0jIl2Yf")
+	if err != nil{
+		fmt.Println("Got error in initialize AliCloud KMS Client: ", err)
+	}
+
+	decryReq:=kms.DecryptRequest{
+		RpcRequest:              &requests.RpcRequest{},
+		CiphertextBlob:          string(ciphertextBlob),
+	}
+	decryReq.InitWithApiInfo("Kms", "2016-01-20", "Decrypt", "kms", "openAPI")
+	decResp,err := client.Decrypt(&decryReq)
+	if err !=nil{
+		fmt.Println("Got error in AliCloud KMS decrypting: ", err)
+	}
+	plaintext = decResp.Plaintext
+	fmt.Println("AliCloud KMS Decrypted string: ", plaintext)
+
 
 	/*switch ck.Purpose {
 	case kmspb.CryptoKey_ASYMMETRIC_DECRYPT:

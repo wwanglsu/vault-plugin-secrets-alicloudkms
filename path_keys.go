@@ -8,11 +8,10 @@ import (
 	"strings"
 	"sync"
 	// "time"
-	"os"
+	// "os"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
 	"github.com/gammazero/workerpool"
 	// "github.com/golang/protobuf/ptypes/duration"
 	// "github.com/golang/protobuf/ptypes/timestamp"
@@ -405,37 +404,32 @@ func (b *backend) pathKeysWrite(ctx context.Context, req *logical.Request, d *fr
 		}
 	}*/
 
-	os.Setenv("AWS_ACCESS_KEY_ID","AKIAJYRQDOGKVOVBWUFA")
-	os.Setenv("AWS_SECRET_ACCESS_KEY","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")
-
-	// Initialize a session in us-west-2 that the SDK will use to load
-	// credentials from the shared credentials file ~/.aws/credentials.
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-2")},
-	)
-
-	// Create KMS service client
-	svc := kms.New(sess)
-
-	// Create the key
-	result, err := svc.CreateKey(&kms.CreateKeyInput{
-		Tags: []*kms.Tag{
-			{
-				TagKey:   aws.String("CreatedBy"),
-				TagValue: aws.String("EaaS-Vault"),
-			},
-		},
-	})
-
+	client, err := kms.NewClientWithAccessKey("cn-hangzhou","LTAI4G5VKQ3n4QJ2vBFoR8rL","KS3exBiXnS8XFEtJvY47Juh0jIl2Yf")
 	if err != nil {
-		fmt.Println("Got error creating key: ", err)
-		os.Exit(1)
+		fmt.Println("Got error in creating AliCloud kms client: ", err)
 	}
-	var cmkId string
-	cmkId = *result.KeyMetadata.KeyId
-	arn := *result.KeyMetadata.Arn
-	fmt.Println(arn)
 
+	createKeyReq := kms.CreateKeyRequest{
+		RpcRequest:              &requests.RpcRequest{},
+		ProtectionLevel:         "",
+		KeyUsage:                "",
+		Origin:                  "",
+		Description:             "",
+		KeySpec:                 "",
+		RotationInterval:        "",
+		EnableAutomaticRotation: "",
+	}
+
+	createKeyReq.InitWithApiInfo("Kms", "2016-01-20", "CreateKey", "kms", "openAPI")
+	result, err := client.CreateKey(&createKeyReq)
+	if err !=nil{
+		fmt.Println("Got error creating key: ", err)
+	}
+
+	var cmkId string
+	cmkId = result.KeyMetadata.KeyId
+	arn := result.KeyMetadata.Arn
+	fmt.Println("AliCloud CMK ARN: ", arn)
 	// Save it
 	entry, err := logical.StorageEntryJSON("keys/"+cmkId, &Key{
 		Name:        arn,

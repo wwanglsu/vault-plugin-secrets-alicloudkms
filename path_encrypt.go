@@ -3,14 +3,10 @@ package alicloudkms
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"log"
-	"os"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/kms"
-	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
+	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
 	// "github.com/hashicorp/errwrap"
 	"github.com/hashicorp/vault/sdk/framework"
 	"github.com/hashicorp/vault/sdk/logical"
@@ -79,12 +75,6 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 	plaintext := d.Get("plaintext").(string)
 	// keyVersion := d.Get("key_version").(int)
 
-	data, err := json.Marshal(req)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("alicloudkms/encrypt/:key, Request body: %s\n", data)
-
 	/*k, err := b.Key(ctx, req.Storage, key)
 	if err != nil {
 		if err == ErrKeyNotFound {
@@ -125,45 +115,32 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		return nil, errwrap.Wrapf("failed to encrypt plaintext: {{err}}", err)
 	}*/
 
-	os.Setenv("AWS_ACCESS_KEY_ID","AKIAJYRQDOGKVOVBWUFA")
-	os.Setenv("AWS_SECRET_ACCESS_KEY","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")
-
-	// Initialize a session in us-west-2 that the SDK will use to load
-	// credentials from the shared credentials file ~/.aws/credentials.
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String("us-west-2"),
-		CredentialsChainVerboseErrors:aws.Bool(true)},
-	)
-
-	// Create KMS service client
-	svc := kms.New(sess)
-	resp, err := sess.Config.Credentials.Get()
-	fmt.Println("alicloudkms session config credential: ", resp, err)
-	// keyId := "arn:aws:kms:us-west-2:679498570023:key/0e97f126-e466-4c1f-bb70-0187b86329c4"
-
-	arn := "arn:aws:kms:us-west-2:679498570023:key/" + key
-
-
-	// Encrypt the data
-	result, err := svc.Encrypt(&kms.EncryptInput{
-		KeyId: aws.String(arn),
-		Plaintext: []byte(plaintext),
-	})
-
-	if err != nil {
-		fmt.Println("Got error aws kms encrypting data: ", err)
+	client, err := kms.NewClientWithAccessKey("cn-hangzhou","LTAI4G5VKQ3n4QJ2vBFoR8rL","KS3exBiXnS8XFEtJvY47Juh0jIl2Yf")
+	if err != nil{
+		fmt.Println("Got error kms: ", err)
 	}
 
-	fmt.Println("Blob (base-64 byte array):")
-	fmt.Println(result.GoString())
-	fmt.Println(result.CiphertextBlob)
-	base := base64.StdEncoding.EncodeToString(result.CiphertextBlob)
-	fmt.Println("alicloudkms encrypted string: "+base)
+	encryptReq := kms.EncryptRequest{
+		RpcRequest:              &requests.RpcRequest{},
+		KeyId: key,
+		Plaintext: plaintext,
+	}
+	encryptReq.InitWithApiInfo("Kms", "2016-01-20", "Encrypt", "kms", "openAPI")
+
+	encryresp, err := client.Encrypt(&encryptReq)
+	if err !=nil{
+		fmt.Println("Got error encrypting key: ", err)
+	}
+	fmt.Println("AliCloud Encrypted: ",encryresp.CiphertextBlob)
+	base64 := base64.StdEncoding.EncodeToString([]byte(encryresp.CiphertextBlob))
+	fmt.Println("base64 encoded string: ", base64)
+
+	arn := "acs:kms:us-west-1:5803487320071979:key/" + key
 
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"key_id": result.KeyId,
-			"ciphertext":  base,
+			"arn": arn,
+			"ciphertext":  base64,
 		},
 	}, nil
 }
