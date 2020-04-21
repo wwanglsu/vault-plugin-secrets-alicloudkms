@@ -3,6 +3,7 @@ package alicloudkms
 import (
 	"context"
 	"fmt"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -404,7 +405,9 @@ func (b *backend) pathKeysWrite(ctx context.Context, req *logical.Request, d *fr
 		}
 	}*/
 
-	client, err := kms.NewClientWithAccessKey("cn-hangzhou","LTAI4G5VKQ3n4QJ2vBFoR8rL","KS3exBiXnS8XFEtJvY47Juh0jIl2Yf")
+	accessKeyId := os.Getenv("ALICLOUD_ACCESS_KEY_ID")
+	accessKeySecret := os.Getenv("ALICLOUD_SECRET_ACCESS_KEY")
+	client, err := kms.NewClientWithAccessKey("cn-hangzhou", accessKeyId, accessKeySecret)
 	if err != nil {
 		fmt.Println("Got error in creating AliCloud kms client: ", err)
 	}
@@ -447,6 +450,7 @@ func (b *backend) pathKeysWrite(ctx context.Context, req *logical.Request, d *fr
 	return &logical.Response{
 		Data: map[string]interface{}{
 			"keyId": cmkId,
+			"arn": arn,
 		},
 	}, nil
 }

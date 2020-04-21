@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/hashicorp/errwrap"
+	"os"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
@@ -131,7 +132,10 @@ func (b *backend) pathDecryptWrite(ctx context.Context, req *logical.Request, d 
 	}
 
 	var plaintext string
-	client, err := kms.NewClientWithAccessKey("cn-hangzhou","LTAI4G5VKQ3n4QJ2vBFoR8rL","KS3exBiXnS8XFEtJvY47Juh0jIl2Yf")
+
+	accessKeyId := os.Getenv("ALICLOUD_ACCESS_KEY_ID")
+	accessKeySecret := os.Getenv("ALICLOUD_SECRET_ACCESS_KEY")
+	client, err := kms.NewClientWithAccessKey("cn-hangzhou", accessKeyId, accessKeySecret)
 	if err != nil{
 		fmt.Println("Got error in initialize AliCloud KMS Client: ", err)
 	}

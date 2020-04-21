@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/kms"
@@ -115,7 +116,9 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 		return nil, errwrap.Wrapf("failed to encrypt plaintext: {{err}}", err)
 	}*/
 
-	client, err := kms.NewClientWithAccessKey("cn-hangzhou","LTAI4G5VKQ3n4QJ2vBFoR8rL","KS3exBiXnS8XFEtJvY47Juh0jIl2Yf")
+	accessKeyId := os.Getenv("ALICLOUD_ACCESS_KEY_ID")
+	accessKeySecret := os.Getenv("ALICLOUD_SECRET_ACCESS_KEY")
+	client, err := kms.NewClientWithAccessKey("cn-hangzhou", accessKeyId, accessKeySecret)
 	if err != nil{
 		fmt.Println("Got error in creating AliCloud kms client: ", err)
 	}
@@ -137,11 +140,8 @@ func (b *backend) pathEncryptWrite(ctx context.Context, req *logical.Request, d 
 	base64 := base64.StdEncoding.EncodeToString([]byte(encryresp.CiphertextBlob))
 	fmt.Println("base64 encoded string: ", base64)
 
-	arn := "acs:kms:us-west-1:5803487320071979:key/" + key
-
 	return &logical.Response{
 		Data: map[string]interface{}{
-			"arn": arn,
 			"ciphertext":  base64,
 		},
 	}, nil
